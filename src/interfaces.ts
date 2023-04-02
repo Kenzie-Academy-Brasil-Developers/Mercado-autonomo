@@ -1,29 +1,14 @@
-
 interface IProduct {
   id: number;
   name: string;
   price: number;
   weight: number;
-  section: "food";
+  section?: "food" | "cleaning",
   expirationDate: Date;
 }
+interface ICleaningProduct extends IProduct {}
 
-interface ICleaningProduct {
-  id: number;
-  name: string;
-  price: number;
-  weight: number;
-  section: "food";
-  expirationDate: Date;
-}
-
-interface IFoodProduct {
-  id: number;
-  name: string;
-  price: number;
-  weight: number;
-  section: "food";
-  expirationDate: Date;
+interface IFoodProduct extends IProduct {
   calories: number;
 }
 
