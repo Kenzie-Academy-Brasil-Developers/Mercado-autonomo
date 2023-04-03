@@ -1,31 +1,18 @@
-import express, { json } from "express";
-import { Application } from "express-serve-static-core";
-import { createProducts, listProducts, deleteProducts, listProductsByid, updateProducts,} from "./logics";
-import { checkExistingProductName, checkProductIdExists } from "./middlewares";
+import express, { Application } from "express";
+import {createProduct, deleteProduct, listAllProducts, listProduct, updateProduct } from "./logics";
+import { validateUniqueProductNames, existentProductId } from "./middlewares";
 
 const app: Application = express();
-app.use(json());
 
-app.post("/products/", 
-checkExistingProductName,
-createProducts);
+app.use(express.json());
 
-app.get("/products/",
-listProducts);
+app.post("/products", validateUniqueProductNames, createProduct);
+app.get("/products", listAllProducts);
+app.get("/products/:id", existentProductId, listProduct);
+app.patch("/products/:id", validateUniqueProductNames, existentProductId, updateProduct);
+app.delete("/products/:id", existentProductId, deleteProduct);
 
-app.get("/products/:id",
-checkProductIdExists, 
-listProductsByid);
+app.listen(3000, () => {
+  console.log("Server is running");
+});
 
-app.delete("/products/:id",
-checkProductIdExists, 
-deleteProducts);
-
-app.patch("/products/:id", 
-checkExistingProductName, 
-checkProductIdExists, 
-updateProducts);
-
-const PORT: number = 3001;
-const runningMsg = `Server running on http://localhost:${PORT}`;
-app.listen(PORT, () => console.log(runningMsg));

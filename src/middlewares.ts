@@ -1,40 +1,55 @@
 import { NextFunction, Request, Response } from "express";
 import market from "./database";
+import { IProductRequest } from "./interfaces";
 
-const checkProductIdExists = (
+const validateUniqueProductNames = (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
-  const id = parseInt(req.params.id);
-  const findProduct = market.findIndex((prod) => prod.id === id);
-  if (findProduct === -1) {
+): Response | void => {
+  const productRequest: Array<IProductRequest> | IProductRequest = req.body;
+  let itIsDuplicated = false;
+
+  if (req.method === "POST") {
+    (productRequest as Array<IProductRequest>).forEach((prod) => {
+      market.forEach((marketProduct) => {
+        if (prod.name === marketProduct.name) {
+          itIsDuplicated = true;
+        }
+      });
+    });
+  } else if (req.method === "PATCH") {
+    itIsDuplicated = market.some(
+      (prod) => prod.name === (productRequest as IProductRequest).name
+    );
+  }
+
+  if (itIsDuplicated) {
+    return res.status(409).json({ error: "Product already registered" });
+  }
+
+  return next();
+};
+
+const existentProductId = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Response | void => {
+  const id = Number(req.params.id);
+  const productIndex = market.findIndex((prod) => prod.id === id);
+
+  if (productIndex === -1) {
     return res.status(404).json({
-      error: "Product not found!",
+      error: "Product not found",
     });
   }
 
   res.locals.market = {
-    idProducts: id,
-    indexProducts: findProduct,
+    productIndex: productIndex,
   };
+
   return next();
 };
 
-const checkExistingProductName = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const { name } = req.body;
-  const findName = market.findIndex((prod) => prod.name === name);
-  if (findName !== -1) {
-    return res.status(409).json({
-      error: "Product already registered",
-    });
-  }
-
-  next();
-};
-
-export { checkProductIdExists, checkExistingProductName };
+export { validateUniqueProductNames, existentProductId };

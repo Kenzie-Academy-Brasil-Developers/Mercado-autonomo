@@ -1,91 +1,77 @@
 import { Request, Response } from "express";
-import moment from "moment-timezone";
 import market from "./database";
-import {
-  IProduct,
-  TProductsRequest,
-  ICleaningProduct,
-  IFoodProduct,
-} from "./interfaces";
+import { IProduct, IProductRequest } from "./interfaces";
 
-let nextProductId = 1;
-
-const createProducts = (req: Request, res: Response): Response => {
-  const productData: TProductsRequest = req.body;
-  const expirationDate = moment().tz("America/Sao_Paulo").toDate();
-
-  const newProduct: IProduct = {
-    id: nextProductId,
-    ...productData,
-    expirationDate,
-  };
-  market.push(newProduct);
-  nextProductId++;
-
-  return res.status(201).json(newProduct);
-};
-
-const listProducts = (req: Request, res: Response): Response => {
-  const price: any = req.query.price;
-  const section: any = req.query.section;
-
-  let products = market;
-
-  if (price) {
-    products = products.filter((prod) => prod.price == price);
-  }
-
-  if (section === "food") {
-    products = products.filter(
-      (prod) => (prod as IFoodProduct).calories !== undefined
-    );
-  }
-
-  return res.json(products);
-};
-
-const listProductsByid = (req: Request, res: Response): Response => {
-  const id = parseInt(req.params.id);
-  const product = market.find((prod) => prod.id === id);
-  if (product) {
-    return res.json(product);
-  } else {
-    return res.status(404).json({ message: "Product not found" });
-  }
-};
-
-const deleteProducts = (req: Request, res: Response): Response => {
-  const id = parseInt(req.params.id);
-  const findIndexProduct = market.findIndex(
-    (prod: IProduct | ICleaningProduct) => prod.id === id
+const createProduct = (req: Request, res: Response): Response => {
+  let number = market.length;
+  const requestedProducts: Array<IProductRequest> = req.body;
+  const oneYearLater = new Date(
+    new Date().setDate(new Date().getDate() + 365)
   );
-  if (findIndexProduct !== -1) {
-    market.splice(findIndexProduct, 1);
-    return res.status(204).send();
-  } else {
-    return res.status(404).json({ message: "Product not found" });
-  }
+  const total = requestedProducts.reduce(
+    (acc, prod) => acc + prod.price,
+    0
+  );
+
+  const newProductList: Array<IProduct> = requestedProducts.map((prod) => {
+    return { id: ++number, ...prod, expirationDate: oneYearLater };
+  });
+  market.push(...newProductList);
+
+  return res.status(201).json({
+    total: total,
+    marketProducts: newProductList,
+  });
 };
 
-const updateProducts = (req: Request, res: Response): Response => {
-  const id = parseInt(req.params.id);
-  const findIndexProduct = market.findIndex((prod) => prod.id === id);
-  if (findIndexProduct !== -1) {
-    const newProduct = {
-      ...market[findIndexProduct],
-      ...req.body,
-    };
-    market[findIndexProduct] = newProduct;
-    return res.status(200).json(newProduct);
-  } else {
-    return res.status(404).json({ message: "Product not found" });
+const listAllProducts = (
+  req: Request,
+  res: Response
+): Response => {
+  const total = market.reduce((acc, prod) => acc + prod.price, 0);
+
+  return res.status(200).json({
+    total: total,
+    marketProducts: market,
+  });
+};
+
+const listProduct = (req: Request, res: Response): Response => {
+  const productIndex = res.locals.market.productIndex;
+  const product = market[productIndex];
+  const teste = {
+    ...product,
+    expirationDate: product.expirationDate.toISOString(),
+  };
+
+  return res.status(200).json(teste);
+};
+
+const updateProduct = (req: Request, res: Response): Response => {
+  const productRequest = req.body;
+  const productIndex = Number(res.locals.market.productIndex);
+
+  for (const key in productRequest) {
+    if (key === "id" || key === "expirationDate") {
+      delete productRequest[key];
+    }
   }
+
+  market[productIndex] = { ...market[productIndex], ...productRequest };
+  return res.status(200).json(market[productIndex]);
+};
+
+const deleteProduct = (req: Request, res: Response): Response => {
+  const productIndex = Number(res.locals.market.productIndex);
+
+  market.splice(productIndex, 1);
+  return res.status(204).json();
 };
 
 export {
-  createProducts,
-  listProducts,
-  deleteProducts,
-  listProductsByid,
-  updateProducts,
+  createProduct,
+  listAllProducts,
+  listProduct,
+  updateProduct,
+  deleteProduct,
 };
